@@ -4,9 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Camera,
   Scan,
@@ -22,11 +21,12 @@ import * as tf from "@tensorflow/tfjs";
 import { subjects, students, type Student } from "@/lib/data";
 import { addAttendanceRecord } from "@/lib/attendance-store";
 
-// Model labels from the trained model
-const MODEL_LABELS = ["Somesh", "Deepesh", "Balu", "Susheel"];
-const CONFIDENCE_THRESHOLD = 0.85; // 85%
+// Model configuration
+const MODEL_URL = "/models/face-detection/model.json";
+const MODEL_METADATA_URL = "/models/face-detection/metadata.json";
+const CONFIDENCE_THRESHOLD = 0.85;
 
-type DetectionStatus = "idle" | "loading" | "ready" | "detecting" | "success" | "error";
+type DetectionStatus = "idle" | "loading" | "ready" | "scanning" | "success" | "error";
 
 interface DetectionResult {
   label: string;
@@ -34,58 +34,67 @@ interface DetectionResult {
   matchedStudent?: Student;
 }
 
-interface AttendanceRecord {
-  studentName: string;
-  rollNumber: string;
-  subject: string;
-  period: number;
-  timestamp: string;
-  confidence: number;
+interface ModelMetadata {
+  labels: string[];
+  imageSize: number;
 }
 
 export default function FaceAttendancePage() {
   const [status, setStatus] = useState<DetectionStatus>("idle");
   const [model, setModel] = useState<tf.LayersModel | null>(null);
+  const [metadata, setMetadata] = useState<ModelMetadata | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
   const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
-  const [attendanceLog, setAttendanceLog] = useState<AttendanceRecord[]>([]);
+  const [attendanceLog, setAttendanceLog] = useState<Array<{
+    studentName: string;
+    rollNumber: string;
+    subject: string;
+    period: number;
+    timestamp: string;
+    confidence: number;
+  }>>([]);
   const [error, setError] = useState<string>("");
-  const [isModelLoading, setIsModelLoading] = useState(false);
-  const [webcamActive, setWebcamActive] = useState(false);
+  const [prediction, setPrediction] = useState<string>("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
- const requestRef = useRef<number>();
+  const streamRef = useRef<MediaStream | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load the Teachable Machine model
+  // Load model and metadata
   const loadModel = useCallback(async () => {
-    setIsModelLoading(true);
+    setStatus("loading");
     setError("");
 
     try {
+      // Set backend
       await tf.setBackend("webgl");
-      const loadedModel = await tf.loadLayersModel("/models/face-detection/model.json");
+      await tf.ready();
+
+      // Load model
+      const loadedModel = await tf.loadLayersModel(MODEL_URL);
       setModel(loadedModel);
+
+      // Load metadata
+      const metaRes = await fetch(MODEL_METADATA_URL);
+      const meta = await metaRes.json();
+      setMetadata({ labels: meta.labels, imageSize: meta.imageSize });
+
       setStatus("ready");
     } catch (err) {
       console.error("Failed to load model:", err);
-      setError("Failed to load face detection model. Please refresh the page.");
+      setError("Failed to load face detection model. Check console for details.");
       setStatus("error");
-    } finally {
-      setIsModelLoading(false);
     }
   }, []);
 
-  // Initialize model on mount
+  // Initialize on mount
   useEffect(() => {
     loadModel();
 
     return () => {
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
-      }
-      stopWebcam();
+      stopScanning();
     };
   }, [loadModel]);
 
@@ -97,156 +106,168 @@ export default function FaceAttendancePage() {
         audio: false,
       });
 
+      streamRef.current = stream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        setWebcamActive(true);
+        await videoRef.current.play();
       }
     } catch (err) {
-      setError("Failed to access camera. Please allow camera permissions.");
-      setStatus("error");
+      throw new Error("Camera access denied. Please allow camera permissions.");
     }
   };
 
   // Stop webcam
   const stopWebcam = () => {
-    if (videoRef.current?.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach((track) => track.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
       videoRef.current.srcObject = null;
-      setWebcamActive(false);
     }
   };
 
-  // Predict face from video frame
-  const predictFace = async () => {
-    if (!model || !videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx || video.readyState !== 4) return;
-
-    // Draw video frame to canvas
+  // Process image for prediction
+  const processImage = (video: HTMLVideoElement): tf.Tensor => {
+    const canvas = document.createElement("canvas");
     canvas.width = 224;
     canvas.height = 224;
+    const ctx = canvas.getContext("2d")!;
     ctx.drawImage(video, 0, 0, 224, 224);
 
-    // Get image data and preprocess
     const imageData = ctx.getImageData(0, 0, 224, 224);
-    const tensor = tf.browser
-      .fromPixels(imageData)
-      .toFloat()
-      .expandDims(0)
-      .div(255);
+    let tensor = tf.browser.fromPixels(imageData);
 
-    // Make prediction
-    const predictions = model.predict(tensor) as tf.Tensor;
-    const probabilities = await predictions.data();
+    // Normalize
+    tensor = tf.div(tensor, tf.scalar(255));
+    // Add batch dimension
+    tensor = tf.expandDims(tensor, 0);
 
-    // Get highest confidence prediction
-    const maxIndex = probabilities.indexOf(Math.max(...probabilities));
-    const confidence = probabilities[maxIndex];
-    const label = MODEL_LABELS[maxIndex];
-
-    // Cleanup tensors
-    tensor.dispose();
-    predictions.dispose();
-
-    return { label, confidence };
+    return tensor;
   };
 
-  // Start face detection
-  const startDetection = async () => {
+  // Make prediction
+  const predict = async (): Promise<{ label: string; confidence: number } | null> => {
+    if (!model || !videoRef.current || !metadata) return null;
+
+    try {
+      const tensor = processImage(videoRef.current);
+      const predictions = model.predict(tensor) as tf.Tensor;
+      const probs = await predictions.data();
+
+      // Cleanup
+      tensor.dispose();
+      predictions.dispose();
+
+      // Find highest probability
+      const maxIndex = probs.indexOf(Math.max(...Array.from(probs)));
+      const confidence = probs[maxIndex];
+      const label = metadata.labels[maxIndex];
+
+      return { label, confidence };
+    } catch (err) {
+      console.error("Prediction error:", err);
+      return null;
+    }
+  };
+
+  // Start scanning
+  const startScanning = async () => {
     if (!selectedSubject || !selectedPeriod) {
       setError("Please select subject and period first");
       return;
     }
 
-    setStatus("detecting");
     setError("");
     setDetectionResult(null);
+    setStatus("scanning");
 
-    await startWebcam();
+    try {
+      await startWebcam();
 
-    // Run detection loop
-    const detectLoop = async () => {
-      if (status !== "detecting") return;
+      // Run prediction every 500ms
+      intervalRef.current = setInterval(async () => {
+        const result = await predict();
 
-      const result = await predictFace();
+        if (result) {
+          setPrediction(`${result.label}: ${Math.round(result.confidence * 100)}%`);
 
-      if (result && result.confidence >= CONFIDENCE_THRESHOLD) {
-        // Find matching student by name (case-insensitive)
-        const matchedStudent = students.find(
-          (s) => s.name.toLowerCase().includes(result.label.toLowerCase())
-        );
+          if (result.confidence >= CONFIDENCE_THRESHOLD) {
+            // Found a match
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+            }
 
-        const detectionData: DetectionResult = {
-          label: result.label,
-          confidence: result.confidence,
-          matchedStudent,
-        };
+            // Find matching student
+            const matchedStudent = students.find((s) =>
+              s.name.toLowerCase().includes(result.label.toLowerCase())
+            );
 
-        setDetectionResult(detectionData);
+            setDetectionResult({
+              label: result.label,
+              confidence: result.confidence,
+              matchedStudent,
+            });
 
-        if (matchedStudent) {
-          // Mark attendance
-          const today = new Date().toISOString().split("T")[0];
-          addAttendanceRecord({
-            studentId: matchedStudent.id,
-            subjectId: selectedSubject,
-            date: today,
-            period: parseInt(selectedPeriod),
-            status: "present",
-            markedBy: "FACE_SYSTEM",
-          });
+            if (matchedStudent) {
+              // Mark attendance
+              const today = new Date().toISOString().split("T")[0];
+              addAttendanceRecord({
+                studentId: matchedStudent.id,
+                subjectId: selectedSubject,
+                date: today,
+                period: parseInt(selectedPeriod),
+                status: "present",
+                markedBy: "FACE_SYSTEM",
+              });
 
-          // Add to log
-          const subject = subjects.find((s) => s.id === selectedSubject);
-          setAttendanceLog((prev) => [
-            {
-              studentName: matchedStudent.name,
-              rollNumber: matchedStudent.rollNumber,
-              subject: subject?.name || "Unknown",
-              period: parseInt(selectedPeriod),
-              timestamp: new Date().toLocaleTimeString(),
-              confidence: Math.round(result.confidence * 100),
-            },
-            ...prev.slice(0, 9), // Keep last 10
-          ]);
+              // Add to log
+              const subject = subjects.find((s) => s.id === selectedSubject);
+              setAttendanceLog((prev) => [
+                {
+                  studentName: matchedStudent.name,
+                  rollNumber: matchedStudent.rollNumber,
+                  subject: subject?.name || "Unknown",
+                  period: parseInt(selectedPeriod),
+                  timestamp: new Date().toLocaleTimeString(),
+                  confidence: Math.round(result.confidence * 100),
+                },
+                ...prev.slice(0, 9),
+              ]);
 
-          setStatus("success");
-          stopWebcam();
-        } else {
-          setStatus("error");
-          setError(`Detected ${result.label} but no matching student found in database.`);
+              setStatus("success");
+            } else {
+              setError(`Detected ${result.label} but no matching student found.`);
+              setStatus("error");
+            }
+
+            stopWebcam();
+          }
         }
-      } else {
-        // Continue detection
-        requestRef.current = requestAnimationFrame(detectLoop);
-      }
-    };
-
-    // Start detection after a short delay for camera warmup
-    setTimeout(() => {
-      detectLoop();
-    }, 1000);
-  };
-
-  // Stop detection
-  const stopDetection = () => {
-    setStatus("ready");
-    stopWebcam();
-    if (requestRef.current) {
-      cancelAnimationFrame(requestRef.current);
+      }, 500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start camera");
+      setStatus("error");
     }
   };
 
-  // Reset for next scan
+  // Stop scanning
+  const stopScanning = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    stopWebcam();
+    setStatus("ready");
+  };
+
+  // Reset
   const resetScan = () => {
     setStatus("ready");
     setDetectionResult(null);
     setError("");
+    setPrediction("");
     stopWebcam();
   };
 
@@ -261,33 +282,40 @@ export default function FaceAttendancePage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Face Recognition Attendance</h1>
             <p className="text-muted-foreground">
-              Mark attendance using AI-powered face detection
+              AI-powered face detection with {metadata?.labels.join(", ") || "loading..."}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Model Info */}
-      <Alert>
-        <Users className="h-4 w-4" />
-        <AlertTitle>Trained Model</AlertTitle>
-        <AlertDescription>
-          This system recognizes: {MODEL_LABELS.join(", ")}. Detection confidence must be ≥85% to mark attendance.
-        </AlertDescription>
-      </Alert>
+      {/* Status Alert */}
+      {status === "loading" && (
+        <Alert>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription>Loading face detection model...</AlertDescription>
+        </Alert>
+      )}
+
+      {status === "ready" && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-700">
+            Model loaded successfully! Ready to scan faces.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Configuration Panel */}
+        {/* Configuration */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Camera className="h-5 w-5" />
               Configure Session
             </CardTitle>
-            <CardDescription>Select subject and period before scanning</CardDescription>
+            <CardDescription>Select subject and period</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Subject Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Subject</label>
               <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -304,7 +332,6 @@ export default function FaceAttendancePage() {
               </Select>
             </div>
 
-            {/* Period Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Period</label>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -321,32 +348,31 @@ export default function FaceAttendancePage() {
               </Select>
             </div>
 
-            {/* Action Buttons */}
             <div className="pt-4">
-              {status === "detecting" ? (
-                <Button variant="destructive" className="w-full" onClick={stopDetection}>
+              {status === "scanning" ? (
+                <Button variant="destructive" className="w-full" onClick={stopScanning}>
                   <XCircle className="h-4 w-4 mr-2" />
                   Stop Scanning
                 </Button>
-              ) : status === "success" ? (
+              ) : status === "success" || status === "error" ? (
                 <Button className="w-full" onClick={resetScan}>
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Scan Next Student
+                  Scan Next
                 </Button>
               ) : (
                 <Button
                   className="w-full"
-                  onClick={startDetection}
-                  disabled={!selectedSubject || !selectedPeriod || isModelLoading || status === "loading"}
+                  onClick={startScanning}
+                  disabled={status !== "ready" || !selectedSubject || !selectedPeriod}
                 >
-                  {isModelLoading ? (
+                  {status === "loading" ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Loading Model...
+                      Loading...
                     </>
                   ) : (
                     <>
-                      <Camera className="h-4 w-4 mr-2" />
+                      <Scan className="h-4 w-4 mr-2" />
                       Start Face Scan
                     </>
                   )}
@@ -367,11 +393,11 @@ export default function FaceAttendancePage() {
         <Card>
           <CardHeader>
             <CardTitle>Camera Feed</CardTitle>
-            <CardDescription>Position face in center for best results</CardDescription>
+            <CardDescription>Position face in center</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-              {status === "detecting" || status === "ready" ? (
+              {status === "scanning" ? (
                 <>
                   <video
                     ref={videoRef}
@@ -380,17 +406,18 @@ export default function FaceAttendancePage() {
                     muted
                     className="w-full h-full object-cover"
                   />
-                  {status === "detecting" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <div className="w-48 h-48 border-4 border-primary rounded-full animate-pulse" />
-                    </div>
-                  )}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-48 h-48 border-4 border-primary rounded-full animate-pulse" />
+                  </div>
+                  <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-2 rounded text-center">
+                    {prediction || "Scanning..."}
+                  </div>
                 </>
               ) : status === "success" ? (
                 <div className="flex flex-col items-center justify-center h-full bg-green-50">
                   <CheckCircle2 className="h-16 w-16 text-green-600 mb-4" />
                   <p className="text-lg font-semibold text-green-800">
-                    {detectionResult?.matchedStudent?.name}
+                    {detectionResult?.matchedStudent?.name || detectionResult?.label}
                   </p>
                   <p className="text-sm text-green-600">
                     Confidence: {Math.round((detectionResult?.confidence || 0) * 100)}%
@@ -399,7 +426,7 @@ export default function FaceAttendancePage() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <Camera className="h-16 w-16 mb-4 opacity-20" />
-                  <p>Camera will activate when you start scanning</p>
+                  <p>Camera will activate when scanning starts</p>
                 </div>
               )}
             </div>
@@ -410,7 +437,7 @@ export default function FaceAttendancePage() {
         </Card>
       </div>
 
-      {/* Results and Log */}
+      {/* Results */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Detection Result */}
         {detectionResult && (
@@ -422,7 +449,7 @@ export default function FaceAttendancePage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                   <div>
-                    <p className="text-sm text-muted-foreground">Detected Person</p>
+                    <p className="text-sm text-muted-foreground">Detected</p>
                     <p className="text-lg font-semibold">{detectionResult.label}</p>
                   </div>
                   <div className="text-right">
@@ -436,7 +463,7 @@ export default function FaceAttendancePage() {
                   </div>
                 </div>
 
-                {detectionResult.matchedStudent && (
+                {detectionResult.matchedStudent ? (
                   <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-sm text-green-600 font-medium mb-2">Attendance Marked For:</p>
                     <p className="font-semibold">{detectionResult.matchedStudent.name}</p>
@@ -444,6 +471,10 @@ export default function FaceAttendancePage() {
                       Roll: {detectionResult.matchedStudent.rollNumber}
                     </p>
                   </div>
+                ) : (
+                  <Alert variant="destructive">
+                    <AlertDescription>No matching student found in database</AlertDescription>
+                  </Alert>
                 )}
               </div>
             </CardContent>
@@ -489,6 +520,26 @@ export default function FaceAttendancePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Instructions */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+            <div className="text-sm">
+              <p className="font-medium mb-2">How to use Face Recognition</p>
+              <ul className="text-muted-foreground space-y-1">
+                <li>1. Select subject and period</li>
+                <li>2. Click &quot;Start Face Scan&quot;</li>
+                <li>3. Student positions face in camera view</li>
+                <li>4. System scans every 500ms for detection</li>
+                <li>5. When confidence ≥85%, attendance is marked automatically</li>
+                <li>6. Only recognizes: {metadata?.labels.join(", ") || "loading..."}</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
