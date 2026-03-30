@@ -13,6 +13,7 @@ export interface Student {
   parentPhone: string;
   dateOfAdmission: string;
   dateOfBirth: string;
+  password: string;
 }
 
 export interface Subject {
@@ -163,7 +164,7 @@ export const timetable: TimetableEntry[] = [
 
 // Real Students from the PDF data (3rd year CSSE)
 export const students: Student[] = [
-  { id: "STU211", rollNumber: "22211", regdNo: "3235064022211", name: "Karedla Tanush Sai", course: "B.Tech", branch: "Computer Science & Systems Engineering", semester: 6, year: 3, email: "tanushsai104@gmail.com", phone: "9398167031", parentPhone: "9398167030", dateOfAdmission: "2022-08-01", dateOfBirth: "2004-05-15" },
+  { id: "STU211", rollNumber: "22211", regdNo: "3235064022211", name: "Karedla Tanush Sai", course: "B.Tech", branch: "Computer Science & Systems Engineering", semester: 6, year: 3, email: "tanushsai104@gmail.com", phone: "9398167031", parentPhone: "9398167030", dateOfAdmission: "2022-08-01", dateOfBirth: "2004-05-15", password: "Student123" },
   { id: "STU212", rollNumber: "22212", regdNo: "3235064022212", name: "Karnam Nivrutha Naidu", course: "B.Tech", branch: "Computer Science & Systems Engineering", semester: 6, year: 3, email: "nivruthanaidu004@gmail.com", phone: "9398842656", parentPhone: "9398842655", dateOfAdmission: "2022-08-01", dateOfBirth: "2004-02-20" },
   { id: "STU213", rollNumber: "22213", regdNo: "3235064022213", name: "Karri Swathi Kumar", course: "B.Tech", branch: "Computer Science & Systems Engineering", semester: 6, year: 3, email: "swathkumarkarri@gmail.com", phone: "7670966106", parentPhone: "7670966105", dateOfAdmission: "2022-08-01", dateOfBirth: "2004-08-10" },
   { id: "STU214", rollNumber: "22214", regdNo: "3235064022214", name: "Kartikeya Rapeti", course: "B.Tech", branch: "Computer Science & Systems Engineering", semester: 6, year: 3, email: "kartikeyarapeti16@gmail.com", phone: "9391666660", parentPhone: "9391666661", dateOfAdmission: "2022-08-01", dateOfBirth: "2004-11-25" },
@@ -314,6 +315,18 @@ export function validateTeacherLogin(email: string, password: string): Teacher |
     (t) => t.email.toLowerCase() === email.toLowerCase() && t.password === password
   );
   return teacher || null;
+}
+
+export function validateStudentLogin(identifier: string, password: string): Student | null {
+  // Try matching by roll number, regd number, or email
+  const student = students.find(
+    (s) =>
+      (s.rollNumber.toLowerCase() === identifier.toLowerCase() ||
+       s.regdNo.toLowerCase() === identifier.toLowerCase() ||
+       s.email.toLowerCase() === identifier.toLowerCase()) &&
+      s.password === password
+  );
+  return student || null;
 }
 
 export function calculateStudentAttendance(studentId: string, subjectId?: string): { total: number; present: number; percentage: number } {
