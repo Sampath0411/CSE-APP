@@ -13,6 +13,7 @@ import {
   LogOut,
   Home,
   Calendar,
+  ScanFace,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -37,6 +38,12 @@ const navItems = [
     href: "/qr-attendance",
     icon: QrCode,
     description: "Location-Based QR",
+  },
+  {
+    title: "Face Attendance",
+    href: "/face-attendance",
+    icon: ScanFace,
+    description: "AI Face Recognition",
   },
   {
     title: "Timetable",
