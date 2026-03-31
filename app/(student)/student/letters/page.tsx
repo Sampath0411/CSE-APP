@@ -6,16 +6,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Printer, Download, GraduationCap, Building, Briefcase, CreditCard, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FileText, Send, GraduationCap, Briefcase, CreditCard, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 
 type LetterType = "bonafide" | "study" | "loan" | "internship";
+type RequestStatus = "pending" | "approved" | "rejected";
 
 interface LetterConfig {
   id: LetterType;
   name: string;
   icon: React.ReactNode;
   description: string;
+}
+
+interface LetterRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  letterType: LetterType;
+  status: RequestStatus;
+  requestedAt: string;
+  additionalDetails?: Record<string, string>;
+  serialNumber?: string;
 }
 
 const letterTypes: LetterConfig[] = [
@@ -45,6 +58,9 @@ const letterTypes: LetterConfig[] = [
   },
 ];
 
+// Storage key for letter requests
+const LETTER_REQUESTS_KEY = "letter_requests";
+
 export default function StudentLettersPage() {
   const [student, setStudent] = useState<Student | null>(null);
   const [selectedLetter, setSelectedLetter] = useState<LetterType | "">("");
@@ -54,47 +70,25 @@ export default function StudentLettersPage() {
     loanAmount: "",
     bankName: "",
   });
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [myRequests, setMyRequests] = useState<LetterRequest[]>([]);
   const letterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const storedStudent = sessionStorage.getItem("studentUser");
     if (storedStudent) {
-      setStudent(JSON.parse(storedStudent));
+      const parsed = JSON.parse(storedStudent);
+      setStudent(parsed);
+      loadMyRequests(parsed.id);
     }
   }, []);
 
-  const handlePrint = () => {
-    if (letterRef.current) {
-      const printContent = letterRef.current.innerHTML;
-      const printWindow = window.open("", "", "height=800,width=800");
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Print Letter</title>
-              <style>
-                body { font-family: 'Times New Roman', serif; padding: 40px; line-height: 1.8; }
-                .header { text-align: center; margin-bottom: 30px; }
-                .header h1 { font-size: 24px; margin: 0; }
-                .header h2 { font-size: 18px; margin: 5px 0; }
-                .header p { margin: 5px 0; font-size: 14px; }
-                .content { margin: 30px 0; text-align: justify; }
-                .signature { margin-top: 60px; text-align: right; }
-                .date { margin-top: 20px; }
-                .ref-no { text-align: left; margin-bottom: 20px; }
-                @media print {
-                  body { margin: 0; padding: 20mm; }
-                }
-              </style>
-            </head>
-            <body>
-              ${printContent}
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
-      }
+  const loadMyRequests = (studentId: string) => {
+    const stored = localStorage.getItem(LETTER_REQUESTS_KEY);
+    if (stored) {
+      const allRequests: LetterRequest[] = JSON.parse(stored);
+      const myRequests = allRequests.filter((r) => r.studentId === studentId);
+      setMyRequests(myRequests);
     }
   };
 
@@ -106,23 +100,59 @@ export default function StudentLettersPage() {
     });
   };
 
-  const generateRefNumber = () => {
-    const year = new Date().getFullYear();
-    const random = Math.floor(Math.random() * 10000)
-      .toString()
-      .padStart(4, "0");
-    return `AU/CSSE/${year}/${random}`;
+
+  const handleSubmitRequest = () => {
+    if (!student || !selectedLetter) return;
+
+    const request: LetterRequest = {
+      id: `REQ${Date.now()}`,
+      studentId: student.id,
+      studentName: student.name,
+      studentEmail: student.email || "",
+      letterType: selectedLetter,
+      status: "pending",
+      requestedAt: new Date().toISOString(),
+      additionalDetails,
+    };
+
+    // Store in localStorage
+    const existing = localStorage.getItem(LETTER_REQUESTS_KEY);
+    const requests: LetterRequest[] = existing ? JSON.parse(existing) : [];
+    requests.push(request);
+    localStorage.setItem(LETTER_REQUESTS_KEY, JSON.stringify(requests));
+
+    // Update local state
+    loadMyRequests(student.id);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
   };
 
-  const renderLetter = () => {
+  const getStatusBadge = (status: RequestStatus) => {
+    switch (status) {
+      case "approved":
+        return <Badge className="bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" /> Approved</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Rejected</Badge>;
+      default:
+        return <Badge variant="outline"><Clock className="h-3 w-3 mr-1" /> Pending</Badge>;
+    }
+  };
+
+  const renderLetterPreview = () => {
     if (!student || !selectedLetter) return null;
 
-    const refNo = generateRefNumber();
     const currentDate = getCurrentDate();
 
     const letterContent: Record<LetterType, JSX.Element> = {
       bonafide: (
-        <div ref={letterRef} className="bg-white text-black p-8 font-serif">
+        <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
+          {/* Watermark */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-8xl font-bold text-gray-200 opacity-20 transform -rotate-45">
+              PREVIEW
+            </div>
+          </div>
+
           <div className="header text-center mb-8">
             <h1 className="text-2xl font-bold">ANDHRA UNIVERSITY</h1>
             <h2 className="text-lg">Department of Computer Science and Systems Engineering</h2>
@@ -130,7 +160,7 @@ export default function StudentLettersPage() {
           </div>
 
           <div className="ref-no flex justify-between text-sm mb-6">
-            <span>Ref. No: {refNo}</span>
+            <span className="pending-serial">Serial No: PENDING</span>
             <span>Date: {currentDate}</span>
           </div>
 
@@ -160,11 +190,22 @@ export default function StudentLettersPage() {
             <p>Professor & HOD</p>
             <p>Dept. of CSSE, Andhra University</p>
           </div>
+
+          {/* Watermark text at bottom */}
+          <div className="mt-8 text-center text-xs text-gray-400 border-t pt-4">
+            This is a preview. Submit request for official letter.
+          </div>
         </div>
       ),
 
       study: (
-        <div ref={letterRef} className="bg-white text-black p-8 font-serif">
+        <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-8xl font-bold text-gray-200 opacity-20 transform -rotate-45">
+              PREVIEW
+            </div>
+          </div>
+
           <div className="header text-center mb-8">
             <h1 className="text-2xl font-bold">ANDHRA UNIVERSITY</h1>
             <h2 className="text-lg">Department of Computer Science and Systems Engineering</h2>
@@ -172,7 +213,7 @@ export default function StudentLettersPage() {
           </div>
 
           <div className="ref-no flex justify-between text-sm mb-6">
-            <span>Ref. No: {refNo}</span>
+            <span className="pending-serial">Serial No: PENDING</span>
             <span>Date: {currentDate}</span>
           </div>
 
@@ -187,21 +228,11 @@ export default function StudentLettersPage() {
               <strong>Course Details:</strong>
             </p>
             <ul className="list-none mb-4 ml-8">
-              <li>
-                Program: <strong>{student.course}</strong>
-              </li>
-              <li>
-                Branch: <strong>{student.branch}</strong>
-              </li>
-              <li>
-                Current Year: <strong>{student.year}</strong>
-              </li>
-              <li>
-                Current Semester: <strong>{student.semester}</strong>
-              </li>
-              <li>
-                Date of Admission: <strong>{new Date(student.dateOfAdmission).toLocaleDateString("en-IN")}</strong>
-              </li>
+              <li>Program: <strong>{student.course}</strong></li>
+              <li>Branch: <strong>{student.branch}</strong></li>
+              <li>Current Year: <strong>{student.year}</strong></li>
+              <li>Current Semester: <strong>{student.semester}</strong></li>
+              <li>Date of Admission: <strong>{new Date(student.dateOfAdmission).toLocaleDateString("en-IN")}</strong></li>
             </ul>
             <p>
               This certificate is issued for the purpose of records and verification. The above information is true to
@@ -215,11 +246,21 @@ export default function StudentLettersPage() {
             <p>Professor & HOD</p>
             <p>Dept. of CSSE, Andhra University</p>
           </div>
+
+          <div className="mt-8 text-center text-xs text-gray-400 border-t pt-4">
+            This is a preview. Submit request for official letter.
+          </div>
         </div>
       ),
 
       loan: (
-        <div ref={letterRef} className="bg-white text-black p-8 font-serif">
+        <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-8xl font-bold text-gray-200 opacity-20 transform -rotate-45">
+              PREVIEW
+            </div>
+          </div>
+
           <div className="header text-center mb-8">
             <h1 className="text-2xl font-bold">ANDHRA UNIVERSITY</h1>
             <h2 className="text-lg">Department of Computer Science and Systems Engineering</h2>
@@ -227,19 +268,16 @@ export default function StudentLettersPage() {
           </div>
 
           <div className="ref-no flex justify-between text-sm mb-6">
-            <span>Ref. No: {refNo}</span>
+            <span className="pending-serial">Serial No: PENDING</span>
             <span>Date: {currentDate}</span>
           </div>
 
           <h3 className="text-center text-xl font-bold underline mb-8">EDUCATION LOAN ESTIMATION LETTER</h3>
 
           <p className="mb-4">
-            To,
-            <br />
-            The Branch Manager,
-            <br />
-            {additionalDetails.bankName || "[Bank Name]"},
-            <br />
+            To,<br />
+            The Branch Manager,<br />
+            {additionalDetails.bankName || "[Bank Name]"},<br />
             [Branch Address]
           </p>
 
@@ -248,46 +286,20 @@ export default function StudentLettersPage() {
           </p>
 
           <div className="content text-justify leading-8">
-            <p className="mb-4">Respected Sir/Madam,</p>
             <p className="mb-4">
               This is to certify that <strong>{student.name}</strong>, bearing Registration Number{" "}
-              <strong>{student.regdNo}</strong>, is a bonafide student of this department pursuing{" "}
+              <strong>{student.regdNo}</strong>, is a bonafide student of this department, currently pursuing{" "}
               <strong>{student.course}</strong> in <strong>{student.branch}</strong>.
             </p>
             <p className="mb-4">
-              The estimated expenses for the remaining duration of the course are as follows:
+              The estimated expenses for the course are as follows:
             </p>
-            <table className="w-full mb-4 border-collapse">
-              <tbody>
-                <tr className="border-b">
-                  <td className="py-2">Tuition Fee (per year)</td>
-                  <td className="py-2 text-right">Rs. 45,000/-</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-2">Examination Fee (per year)</td>
-                  <td className="py-2 text-right">Rs. 5,000/-</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-2">Books and Study Materials</td>
-                  <td className="py-2 text-right">Rs. 10,000/-</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-2">Hostel and Mess (per year)</td>
-                  <td className="py-2 text-right">Rs. 60,000/-</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-2">Other Expenses</td>
-                  <td className="py-2 text-right">Rs. 15,000/-</td>
-                </tr>
-                <tr className="font-bold">
-                  <td className="py-2">Total Estimated Amount</td>
-                  <td className="py-2 text-right">Rs. {additionalDetails.loanAmount || "1,35,000"}/-</td>
-                </tr>
-              </tbody>
-            </table>
+            <ul className="list-none mb-4 ml-8">
+              <li>Tuition Fee: <strong>Rs. {additionalDetails.loanAmount || "[Amount]"}</strong></li>
+              <li>Other Expenses: <strong>As per actuals</strong></li>
+            </ul>
             <p>
-              Kindly consider the above request and grant the necessary education loan to the student. We recommend the
-              student for the loan facility.
+              This letter is issued for the purpose of obtaining an educational loan.
             </p>
           </div>
 
@@ -297,11 +309,21 @@ export default function StudentLettersPage() {
             <p>Professor & HOD</p>
             <p>Dept. of CSSE, Andhra University</p>
           </div>
+
+          <div className="mt-8 text-center text-xs text-gray-400 border-t pt-4">
+            This is a preview. Submit request for official letter.
+          </div>
         </div>
       ),
 
       internship: (
-        <div ref={letterRef} className="bg-white text-black p-8 font-serif">
+        <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-8xl font-bold text-gray-200 opacity-20 transform -rotate-45">
+              PREVIEW
+            </div>
+          </div>
+
           <div className="header text-center mb-8">
             <h1 className="text-2xl font-bold">ANDHRA UNIVERSITY</h1>
             <h2 className="text-lg">Department of Computer Science and Systems Engineering</h2>
@@ -309,19 +331,16 @@ export default function StudentLettersPage() {
           </div>
 
           <div className="ref-no flex justify-between text-sm mb-6">
-            <span>Ref. No: {refNo}</span>
-            <span>Date: {currentDate}</span>
+            <span className="pending-serial">Serial No: PENDING</span>
+            <span>Date: {getCurrentDate()}</span>
           </div>
 
           <h3 className="text-center text-xl font-bold underline mb-8">INTERNSHIP PERMISSION LETTER</h3>
 
           <p className="mb-4">
-            To,
-            <br />
-            The HR Manager,
-            <br />
-            {additionalDetails.companyName || "[Company Name]"},
-            <br />
+            To,<br />
+            The HR Manager,<br />
+            {additionalDetails.companyName || "[Company Name]"},<br />
             [Company Address]
           </p>
 
@@ -330,26 +349,19 @@ export default function StudentLettersPage() {
           </p>
 
           <div className="content text-justify leading-8">
-            <p className="mb-4">Respected Sir/Madam,</p>
             <p className="mb-4">
               This is to certify that <strong>{student.name}</strong>, bearing Registration Number{" "}
-              <strong>{student.regdNo}</strong> and Roll Number <strong>{student.rollNumber}</strong>,
-              is a bonafide student of our department, currently pursuing <strong>{student.course}</strong> in{" "}
-              <strong>{student.branch}</strong>, Year {student.year}, Semester {student.semester}.
+              <strong>{student.regdNo}</strong> and Roll Number <strong>{student.rollNumber}</strong>, is a bonafide
+              student of this department, currently pursuing <strong>{student.course}</strong> in{" "}
+              <strong>{student.branch}</strong>.
             </p>
             <p className="mb-4">
-              The student has expressed interest in undertaking an internship at your esteemed organization for a
-              duration of <strong>{additionalDetails.internshipDuration || "[Duration]"}</strong>. We hereby grant
-              permission for the student to pursue the internship program.
-            </p>
-            <p className="mb-4">
-              The department has no objection to the student participating in the internship, provided it does not
-              interfere with the academic schedule and examinations. We request you to provide the necessary training
-              and exposure to industry practices.
+              The student is permitted to undergo an internship program at your organization for a duration of{" "}
+              <strong>{additionalDetails.internshipDuration || "[Duration]"}</strong>.
             </p>
             <p>
-              We would appreciate if you could provide a completion certificate upon successful completion of the
-              internship.
+              We request you to kindly provide the necessary facilities for the internship. This letter is issued with
+              the approval of the Head of the Department.
             </p>
           </div>
 
@@ -358,6 +370,10 @@ export default function StudentLettersPage() {
             <p className="font-bold">Dr. Valli Kumari V</p>
             <p>Professor & HOD</p>
             <p>Dept. of CSSE, Andhra University</p>
+          </div>
+
+          <div className="mt-8 text-center text-xs text-gray-400 border-t pt-4">
+            This is a preview. Submit request for official letter.
           </div>
         </div>
       ),
@@ -375,189 +391,172 @@ export default function StudentLettersPage() {
   }
 
   return (
-    <div className="p-4 lg:p-6">
+    <div className="p-4 lg:p-6 space-y-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Letter Generator</h1>
-        <p className="text-muted-foreground mt-1">Generate official documents with your student data</p>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <FileText className="h-6 w-6" />
+          Letter Requests
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Request official letters and certificates from the department
+        </p>
       </div>
 
-      <Alert className="mb-6">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Generating letters as: <strong>{student.name}</strong> ({student.rollNumber})
-        </AlertDescription>
-      </Alert>
+      {showSuccess && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-700">
+            Letter request submitted successfully! It will be reviewed by the admin.
+          </AlertDescription>
+        </Alert>
+      )}
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left Panel - Letter Selection */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Student Info Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5" />
-                Your Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Name:</span>
-                  <span className="font-medium">{student.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Roll No:</span>
-                  <span className="font-medium">{student.rollNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Regd No:</span>
-                  <span className="font-medium">{student.regdNo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Course:</span>
-                  <span className="font-medium">{student.course}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Year/Sem:</span>
-                  <span className="font-medium">Year {student.year}, Sem {student.semester}</span>
-                </div>
+      {/* Letter Type Selection */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {letterTypes.map((type) => (
+          <button
+            key={type.id}
+            onClick={() => setSelectedLetter(type.id)}
+            className={`p-4 rounded-lg border-2 text-left transition-all ${
+              selectedLetter === type.id
+                ? "border-primary bg-primary/5"
+                : "border-muted hover:border-primary/50"
+            }`}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                {type.icon}
               </div>
-            </CardContent>
-          </Card>
+              <span className="font-medium">{type.name}</span>
+            </div>
+            <p className="text-sm text-muted-foreground">{type.description}</p>
+          </button>
+        ))}
+      </div>
 
-          {/* Letter Type Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Select Document Type
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {letterTypes.map((letter) => (
-                  <button
-                    key={letter.id}
-                    onClick={() => setSelectedLetter(letter.id)}
-                    className={`w-full p-3 rounded-lg border text-left transition-colors flex items-center gap-3 ${
-                      selectedLetter === letter.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:border-primary/50 hover:bg-muted"
-                    }`}
-                  >
-                    <div
-                      className={`p-2 rounded-md ${
-                        selectedLetter === letter.id ? "bg-primary text-primary-foreground" : "bg-muted"
-                      }`}
-                    >
-                      {letter.icon}
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{letter.name}</p>
-                      <p className="text-xs text-muted-foreground">{letter.description}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Additional Details for specific letters */}
-          {(selectedLetter === "internship" || selectedLetter === "loan") && (
+      {selectedLetter && (
+        <>
+          {/* Additional Details Form */}
+          {selectedLetter === "internship" && (
             <Card>
               <CardHeader>
-                <CardTitle>Additional Details</CardTitle>
+                <CardTitle>Internship Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {selectedLetter === "internship" && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Company Name</label>
-                      <Input
-                        placeholder="Enter company name"
-                        value={additionalDetails.companyName}
-                        onChange={(e) =>
-                          setAdditionalDetails((prev) => ({ ...prev, companyName: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Internship Duration</label>
-                      <Input
-                        placeholder="e.g., 2 months"
-                        value={additionalDetails.internshipDuration}
-                        onChange={(e) =>
-                          setAdditionalDetails((prev) => ({ ...prev, internshipDuration: e.target.value }))
-                        }
-                      />
-                    </div>
-                  </>
-                )}
-                {selectedLetter === "loan" && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Bank Name</label>
-                      <Input
-                        placeholder="Enter bank name"
-                        value={additionalDetails.bankName}
-                        onChange={(e) =>
-                          setAdditionalDetails((prev) => ({ ...prev, bankName: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Loan Amount (Rs.)</label>
-                      <Input
-                        placeholder="e.g., 1,50,000"
-                        value={additionalDetails.loanAmount}
-                        onChange={(e) =>
-                          setAdditionalDetails((prev) => ({ ...prev, loanAmount: e.target.value }))
-                        }
-                      />
-                    </div>
-                  </>
-                )}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Company Name</label>
+                    <Input
+                      value={additionalDetails.companyName}
+                      onChange={(e) =>
+                        setAdditionalDetails((prev) => ({ ...prev, companyName: e.target.value }))
+                      }
+                      placeholder="Enter company name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Duration</label>
+                    <Input
+                      value={additionalDetails.internshipDuration}
+                      onChange={(e) =>
+                        setAdditionalDetails((prev) => ({ ...prev, internshipDuration: e.target.value }))
+                      }
+                      placeholder="e.g., 3 months"
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
-        </div>
 
-        {/* Right Panel - Letter Preview */}
-        <div className="lg:col-span-2">
-          <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Document Preview</CardTitle>
-                <CardDescription>Preview the generated document before printing</CardDescription>
-              </div>
-              {selectedLetter && (
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={handlePrint}>
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print
-                  </Button>
+          {selectedLetter === "loan" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Loan Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Bank Name</label>
+                    <Input
+                      value={additionalDetails.bankName}
+                      onChange={(e) =>
+                        setAdditionalDetails((prev) => ({ ...prev, bankName: e.target.value }))
+                      }
+                      placeholder="Enter bank name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Loan Amount</label>
+                    <Input
+                      value={additionalDetails.loanAmount}
+                      onChange={(e) =>
+                        setAdditionalDetails((prev) => ({ ...prev, loanAmount: e.target.value }))
+                      }
+                      placeholder="e.g., 500000"
+                    />
+                  </div>
                 </div>
-              )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Preview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Letter Preview (with Watermark)</span>
+                <Button size="sm" onClick={handleSubmitRequest}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Submit Request
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                This preview shows &quot;PENDING&quot; serial number and watermark. Official letter will be issued after approval.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {selectedLetter ? (
-                <div className="border border-border rounded-lg overflow-hidden shadow-lg">
-                  {renderLetter()}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No Document Selected</h3>
-                  <p className="text-muted-foreground max-w-sm">
-                    Select a document type from the left panel to generate a letter with your details.
-                  </p>
-                </div>
-              )}
+              <div className="border rounded-lg overflow-hidden bg-gray-50">
+                {renderLetterPreview()}
+              </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </>
+      )}
+
+      {/* My Requests */}
+      {myRequests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>My Letter Requests</CardTitle>
+            <CardDescription>Track the status of your letter requests</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {myRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {letterTypes.find((t) => t.id === request.letterType)?.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Requested: {new Date(request.requestedAt).toLocaleDateString()}
+                    </p>
+                    {request.serialNumber && (
+                      <p className="text-sm text-green-600">Serial: {request.serialNumber}</p>
+                    )}
+                  </div>
+                  <div>{getStatusBadge(request.status)}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   ScanFace,
   Bell,
   BookOpen,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -58,6 +59,12 @@ const navItems = [
     href: "/letters",
     icon: FileText,
     description: "Generate Documents",
+  },
+  {
+    title: "Letter Approvals",
+    href: "/letters/approvals",
+    icon: CheckCircle2,
+    description: "Review Requests",
   },
   {
     title: "Alerts",
