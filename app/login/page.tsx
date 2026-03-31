@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +15,7 @@ import {
   LogIn,
   AlertCircle,
   Eye,
-  EyeOff,
-  BookOpen
+  EyeOff
 } from "lucide-react";
 import { validateTeacherLogin, validateStudentLogin } from "@/lib/data";
 
@@ -76,8 +76,15 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <BookOpen className="h-8 w-8 text-primary" />
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10 mb-4 overflow-hidden">
+            <Image
+              src="/au-logo.png"
+              alt="Andhra University Logo"
+              width={80}
+              height={80}
+              className="object-contain"
+              priority
+            />
           </div>
           <h1 className="text-2xl font-bold text-foreground">CSSE Super Student App</h1>
           <p className="text-muted-foreground text-sm mt-1">

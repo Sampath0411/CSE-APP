@@ -366,7 +366,7 @@ export const alertLogs: AlertLog[] = [
   { id: "AL004", studentId: "STU229", type: "email", message: "Final Warning: Student attendance is critically low at 55%.", sentAt: "2026-03-10T11:00:00", parentContact: "kiranmalla2600p@gmail.com" },
 ];
 
-// Classrooms for QR attendance
+// Classrooms
 export const classrooms = [
   { id: "A33", name: "Room A33", lat: 17.7337, lon: 83.3186 }, // AU College of Engineering coordinates
   { id: "LAB1", name: "Computer Lab 1", lat: 17.7338, lon: 83.3187 },

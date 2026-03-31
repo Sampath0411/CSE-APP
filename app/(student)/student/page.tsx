@@ -14,7 +14,7 @@ import {
   BookOpen,
   AlertTriangle,
   CheckCircle,
-  Scan,
+  ScanFace,
   ArrowRight,
 } from "lucide-react";
 import {
@@ -123,9 +123,9 @@ export default function StudentDashboardPage() {
             </p>
           </div>
           <Button asChild size="lg">
-            <Link href="/student/scan">
-              <Scan className="h-5 w-5 mr-2" />
-              Scan QR Attendance
+            <Link href="/face-attendance">
+              <ScanFace className="h-5 w-5 mr-2" />
+              Face Attendance
             </Link>
           </Button>
         </div>

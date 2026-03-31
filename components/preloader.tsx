@@ -77,10 +77,9 @@ export function Preloader({ children }: PreloaderProps) {
                 className="relative w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden shadow-2xl border-4 border-primary/20"
                 animate={{
                   scale: [1, 1.05, 1],
-                  rotate: [0, 5, -5, 0],
                 }}
                 transition={{
-                  duration: 4,
+                  duration: 3,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}

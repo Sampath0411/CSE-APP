@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,14 +11,14 @@ import {
   Bell,
   ArrowRight,
   CheckCircle,
-  QrCode,
+  ScanFace,
   LogIn,
   UserCog,
 } from "lucide-react";
 
 const highlights = [
   "Real-time attendance tracking with instant percentage calculation",
-  "Location-based QR attendance with 10-meter radius validation",
+  "AI-powered face recognition attendance using TensorFlow.js",
   "Automatic flagging of students below 75% attendance threshold",
   "Simulated SMS/Email alerts for chronic absentees",
   "One-click document generation with student data auto-fill",
@@ -33,6 +34,17 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
         <div className="container mx-auto px-6 py-16 lg:py-24 relative">
           <div className="max-w-3xl mx-auto text-center">
+            <div className="flex justify-center mb-6">
+              <div className="relative w-28 h-28 rounded-full bg-white shadow-lg p-2">
+                <Image
+                  src="/au-logo.png"
+                  alt="Andhra University Logo"
+                  fill
+                  className="object-contain rounded-full p-1"
+                  priority
+                />
+              </div>
+            </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
               <GraduationCap className="h-4 w-4" />
               Andhra University - CSSE Department
@@ -77,7 +89,7 @@ export default function HomePage() {
                 </div>
                 <CardTitle className="text-xl">Student Portal</CardTitle>
                 <CardDescription>
-                  View your attendance, scan QR codes for check-in, and track your academic progress.
+                  View your attendance, use face recognition for check-in, and track your academic progress.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -88,7 +100,7 @@ export default function HomePage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-success" />
-                    Scan QR for attendance
+                    Face recognition attendance
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-success" />
@@ -117,7 +129,7 @@ export default function HomePage() {
                 </div>
                 <CardTitle className="text-xl">Admin / Faculty Portal</CardTitle>
                 <CardDescription>
-                  Manage attendance, view analytics, generate QR codes, and create official documents.
+                  Manage attendance, view analytics, use face recognition, and create official documents.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -128,7 +140,7 @@ export default function HomePage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-success" />
-                    Generate QR codes
+                    Face recognition attendance
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-success" />
@@ -165,9 +177,9 @@ export default function HomePage() {
               <p className="text-xs text-muted-foreground">View reports & trends</p>
             </Card>
             <Card className="text-center p-4">
-              <QrCode className="h-8 w-8 text-warning mx-auto mb-2" />
-              <p className="font-medium text-sm">QR Attendance</p>
-              <p className="text-xs text-muted-foreground">10m radius validation</p>
+              <ScanFace className="h-8 w-8 text-warning mx-auto mb-2" />
+              <p className="font-medium text-sm">Face Attendance</p>
+              <p className="text-xs text-muted-foreground">AI-powered recognition</p>
             </Card>
             <Card className="text-center p-4">
               <FileText className="h-8 w-8 text-accent mx-auto mb-2" />
