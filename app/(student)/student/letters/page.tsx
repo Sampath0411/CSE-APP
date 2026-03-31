@@ -200,10 +200,6 @@ export default function StudentLettersPage() {
             <p>Dept. of CSSE, Andhra University</p>
           </div>
 
-          {/* Watermark text at bottom */}
-          <div className="mt-8 text-center text-xs text-gray-400 border-t pt-4">
-            This is a preview. Submit request for official letter.
-          </div>
         </div>
       ),
 
