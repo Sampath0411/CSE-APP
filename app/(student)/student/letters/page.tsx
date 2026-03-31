@@ -147,18 +147,17 @@ export default function StudentLettersPage() {
     const letterContent: Record<LetterType, JSX.Element> = {
       bonafide: (
         <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
-          {/* Watermark - AU Logo (white/light version) */}
+          {/* Watermark - AU Logo (light version) */}
           <div
             className="absolute inset-0 flex items-center justify-center pointer-events-none z-0"
-            style={{ opacity: 0.15 }}
+            style={{ opacity: 0.2 }}
           >
             <Image
-              src="/andhra-university-logo.png"
+              src="/images.jpg"
               alt="AU Watermark"
-              width={450}
-              height={450}
-              className="object-contain grayscale brightness-150 contrast-75"
-              style={{ filter: "grayscale(100%) brightness(1.5) contrast(0.8)" }}
+              width={400}
+              height={400}
+              className="object-contain"
               priority
             />
           </div>
