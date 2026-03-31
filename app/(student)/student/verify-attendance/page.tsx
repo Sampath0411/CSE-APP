@@ -15,6 +15,8 @@ import {
   Loader2,
   AlertTriangle,
   Navigation,
+  BookOpen,
+  Clock,
 } from "lucide-react";
 import {
   getSessionState,
@@ -33,6 +35,12 @@ interface VerificationStatus {
   device: "pending" | "success" | "error";
 }
 
+interface SessionInfo {
+  subjectId?: string;
+  subjectName?: string;
+  period?: number;
+}
+
 export default function VerifyAttendancePage() {
   const [student, setStudent] = useState<Student | null>(null);
   const [otpInput, setOtpInput] = useState("");
@@ -42,6 +50,7 @@ export default function VerifyAttendancePage() {
     gps: false,
     device: false,
   });
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo>({});
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>({
     otp: "pending",
     gps: "pending",
@@ -74,6 +83,11 @@ export default function VerifyAttendancePage() {
           otp: !!session.otp,
           gps: !!session.teacherLocation,
           device: true, // Device check is always available
+        });
+        setSessionInfo({
+          subjectId: session.subjectId,
+          subjectName: session.subjectName,
+          period: session.period,
         });
       }
     };
@@ -203,6 +217,33 @@ export default function VerifyAttendancePage() {
 
       {sessionActive && (
         <>
+          {/* Session Info */}
+          {(sessionInfo.subjectName || sessionInfo.period) && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  <span className="font-semibold text-primary">Session Details</span>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {sessionInfo.subjectName && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Subject:</span>
+                      <Badge variant="secondary">{sessionInfo.subjectName}</Badge>
+                    </div>
+                  )}
+                  {sessionInfo.period && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Period:</span>
+                      <Badge variant="secondary">{sessionInfo.period}</Badge>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* OTP Verification */}
           {sessionFeatures.otp && (
             <Card>

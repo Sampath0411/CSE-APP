@@ -23,10 +23,12 @@ import {
   Smartphone,
   Key,
   Shield,
+  BookOpen,
 } from "lucide-react";
 import * as tf from "@tensorflow/tfjs";
 import { subjects, students, type Student } from "@/lib/data";
 import { addAttendanceRecord } from "@/lib/attendance-store";
+import { SESSION_KEYS } from "@/lib/anti-proxy";
 
 // Model configuration
 const MODEL_URL = "/models/face-detection/model.json";
@@ -45,15 +47,6 @@ interface ModelMetadata {
   labels: string[];
   imageSize: number;
 }
-
-// Anti-proxy session storage keys
-const SESSION_KEYS = {
-  otp: "antiProxy_otp",
-  otpExpiry: "antiProxy_otpExpiry",
-  teacherLocation: "antiProxy_teacherLocation",
-  fingerprints: "antiProxy_fingerprints",
-  sessionActive: "antiProxy_sessionActive",
-};
 
 export default function FaceAttendancePage() {
   const [status, setStatus] = useState<DetectionStatus>("idle");
@@ -143,7 +136,6 @@ export default function FaceAttendancePage() {
     const expiry = Date.now() + 90000; // 90 seconds
     localStorage.setItem(SESSION_KEYS.otp, newOtp);
     localStorage.setItem(SESSION_KEYS.otpExpiry, expiry.toString());
-    localStorage.setItem(SESSION_KEYS.sessionActive, "true");
   };
 
   // Capture teacher location
@@ -191,9 +183,20 @@ export default function FaceAttendancePage() {
 
   // Start session
   const startSession = () => {
+    if (!selectedSubject || !selectedPeriod) {
+      setError("Please select subject and period first");
+      return;
+    }
+
     setSessionActive(true);
     localStorage.setItem(SESSION_KEYS.sessionActive, "true");
     localStorage.setItem(SESSION_KEYS.fingerprints, JSON.stringify({}));
+
+    // Store subject and period info
+    const subject = subjects.find(s => s.id === selectedSubject);
+    localStorage.setItem(SESSION_KEYS.subjectId, selectedSubject);
+    localStorage.setItem(SESSION_KEYS.subjectName, subject?.name || "");
+    localStorage.setItem(SESSION_KEYS.period, selectedPeriod);
 
     if (otpEnabled) {
       generateOTP();
@@ -413,6 +416,63 @@ export default function FaceAttendancePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Subject and Period Selection */}
+          {!sessionActive && (
+            <div className="grid md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Subject</Label>
+                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.code} - {subject.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Period</Label>
+                <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7].map((period) => (
+                      <SelectItem key={period} value={period.toString()}>
+                        Period {period}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* Session Info Display (when active) */}
+          {sessionActive && (selectedSubject || selectedPeriod) && (
+            <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <span className="font-medium">Active Session</span>
+              </div>
+              <div className="grid md:grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Subject: </span>
+                  <span className="font-medium">
+                    {subjects.find(s => s.id === selectedSubject)?.code || "-"} - {subjects.find(s => s.id === selectedSubject)?.name || "-"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Period: </span>
+                  <span className="font-medium">{selectedPeriod || "-"}</span>
+                </div>
+              </div>            </div>
+          )}
+
           {/* Toggle Switches */}
           <div className="grid md:grid-cols-3 gap-4">
             {/* OTP Toggle */}

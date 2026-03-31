@@ -2,6 +2,9 @@
 // Client-side only - no external libraries
 
 export interface AntiProxySession {
+  subjectId?: string;
+  subjectName?: string;
+  period?: number;
   otp?: string;
   otpExpiry?: number;
   teacherLocation?: { lat: number; lng: number };
@@ -11,6 +14,9 @@ export interface AntiProxySession {
 
 // Session storage keys
 export const SESSION_KEYS = {
+  subjectId: "antiProxy_subjectId",
+  subjectName: "antiProxy_subjectName",
+  period: "antiProxy_period",
   otp: "antiProxy_otp",
   otpExpiry: "antiProxy_otpExpiry",
   teacherLocation: "antiProxy_teacherLocation",
@@ -80,6 +86,9 @@ export function getSessionState(): AntiProxySession {
     return { fingerprints: {}, sessionActive: false };
   }
 
+  const subjectId = localStorage.getItem(SESSION_KEYS.subjectId);
+  const subjectName = localStorage.getItem(SESSION_KEYS.subjectName);
+  const period = localStorage.getItem(SESSION_KEYS.period);
   const otp = localStorage.getItem(SESSION_KEYS.otp);
   const otpExpiry = localStorage.getItem(SESSION_KEYS.otpExpiry);
   const teacherLocation = localStorage.getItem(SESSION_KEYS.teacherLocation);
@@ -87,6 +96,9 @@ export function getSessionState(): AntiProxySession {
   const sessionActive = localStorage.getItem(SESSION_KEYS.sessionActive);
 
   return {
+    subjectId: subjectId || undefined,
+    subjectName: subjectName || undefined,
+    period: period ? parseInt(period) : undefined,
     otp: otp || undefined,
     otpExpiry: otpExpiry ? parseInt(otpExpiry) : undefined,
     teacherLocation: teacherLocation ? JSON.parse(teacherLocation) : undefined,
