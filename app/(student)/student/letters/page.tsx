@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import Image from "next/image";
 import { FileText, Send, GraduationCap, Briefcase, CreditCard, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 
 type LetterType = "bonafide" | "study" | "loan" | "internship";
@@ -146,11 +147,16 @@ export default function StudentLettersPage() {
     const letterContent: Record<LetterType, JSX.Element> = {
       bonafide: (
         <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
-          {/* Watermark */}
+          {/* Watermark - AU Logo */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-8xl font-bold text-gray-200 opacity-20 transform -rotate-45">
-              PREVIEW
-            </div>
+            <Image
+              src="/andhra-university-logo.png"
+              alt="AU Watermark"
+              width={350}
+              height={350}
+              className="opacity-15 object-contain"
+              priority
+            />
           </div>
 
           <div className="header text-center mb-8">
