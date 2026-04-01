@@ -469,16 +469,6 @@ export default function FaceAttendancePage() {
               </p>
             </div>
           )}
-                  {isCapturingLocation ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <MapPin className="h-4 w-4 mr-2" />
-                  )}
-                  {teacherLocation ? "Update Location" : "Capture Location"}
-                </Button>
-              </div>
-            </div>
-          )}
 
           {/* Session Controls */}
           <div className="flex justify-center">

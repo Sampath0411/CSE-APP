@@ -449,8 +449,4 @@ function StatusBadge({ status }: { status: "pending" | "success" | "error" }) {
       Pending
     </Badge>
   );
-}>
-      Pending
-    </Badge>
-  );
 }
