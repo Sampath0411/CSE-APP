@@ -122,3 +122,194 @@ export async function endSessionInSupabase(
     return { success: false, error: "Failed to end session" };
   }
 }
+
+// Letter Request Types
+export type LetterType = "bonafide" | "study" | "loan" | "internship";
+export type RequestStatus = "pending" | "approved" | "rejected";
+
+export interface LetterRequestRecord {
+  id?: string;
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  letter_type: LetterType;
+  status: RequestStatus;
+  requested_at: string;
+  additional_details?: Record<string, string>;
+  serial_number?: string;
+  admin_notes?: string;
+  processed_at?: string;
+}
+
+// Create letter request in Supabase
+export async function createLetterRequest(
+  requestData: LetterRequestRecord
+): Promise<{ success: boolean; data?: LetterRequestRecord; error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from("letter_requests")
+      .insert({
+        student_id: requestData.student_id,
+        student_name: requestData.student_name,
+        student_email: requestData.student_email,
+        letter_type: requestData.letter_type,
+        status: "pending",
+        requested_at: new Date().toISOString(),
+        additional_details: requestData.additional_details,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (err) {
+    console.error("Failed to create letter request:", err);
+    return { success: false, error: "Failed to create letter request" };
+  }
+}
+
+// Get all letter requests (for admin)
+export async function getAllLetterRequests(): Promise<{
+  success: boolean;
+  data?: LetterRequestRecord[];
+  error?: string;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from("letter_requests")
+      .select("*")
+      .order("requested_at", { ascending: false });
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (err) {
+    console.error("Failed to get letter requests:", err);
+    return { success: false, error: "Failed to retrieve letter requests" };
+  }
+}
+
+// Get letter requests for a student
+export async function getStudentLetterRequests(
+  studentId: string
+): Promise<{ success: boolean; data?: LetterRequestRecord[]; error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from("letter_requests")
+      .select("*")
+      .eq("student_id", studentId)
+      .order("requested_at", { ascending: false });
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (err) {
+    console.error("Failed to get student letter requests:", err);
+    return { success: false, error: "Failed to retrieve letter requests" };
+  }
+}
+
+// Update letter request status (approve/reject)
+export async function updateLetterRequestStatus(
+  requestId: string,
+  status: RequestStatus,
+  adminNotes?: string,
+  serialNumber?: string
+): Promise<{ success: boolean; data?: LetterRequestRecord; error?: string }> {
+  try {
+    const updateData: Partial<LetterRequestRecord> = {
+      status,
+      admin_notes: adminNotes,
+      processed_at: new Date().toISOString(),
+    };
+
+    if (serialNumber) {
+      updateData.serial_number = serialNumber;
+    }
+
+    const { data, error } = await supabase
+      .from("letter_requests")
+      .update(updateData)
+      .eq("id", requestId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (err) {
+    console.error("Failed to update letter request:", err);
+    return { success: false, error: "Failed to update letter request" };
+  }
+}
+
+// Subscribe to letter request changes (real-time)
+export function subscribeToLetterRequests(
+  callback: (payload: {
+    eventType: "INSERT" | "UPDATE" | "DELETE";
+    new: LetterRequestRecord | null;
+    old: LetterRequestRecord | null;
+  }) => void
+) {
+  const subscription = supabase
+    .channel("letter_requests_changes")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "letter_requests" },
+      (payload) => {
+        callback({
+          eventType: payload.eventType as "INSERT" | "UPDATE" | "DELETE",
+          new: payload.new as LetterRequestRecord | null,
+          old: payload.old as LetterRequestRecord | null,
+        });
+      }
+    )
+    .subscribe();
+
+  return subscription;
+}
+
+// Subscribe to student's letter requests (real-time)
+export function subscribeToStudentLetterRequests(
+  studentId: string,
+  callback: (payload: {
+    eventType: "INSERT" | "UPDATE" | "DELETE";
+    new: LetterRequestRecord | null;
+    old: LetterRequestRecord | null;
+  }) => void
+) {
+  const subscription = supabase
+    .channel(`student_letters_${studentId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "letter_requests",
+        filter: `student_id=eq.${studentId}`,
+      },
+      (payload) => {
+        callback({
+          eventType: payload.eventType as "INSERT" | "UPDATE" | "DELETE",
+          new: payload.new as LetterRequestRecord | null,
+          old: payload.old as LetterRequestRecord | null,
+        });
+      }
+    )
+    .subscribe();
+
+  return subscription;
+}
