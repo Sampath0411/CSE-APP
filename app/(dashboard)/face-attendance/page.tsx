@@ -25,7 +25,6 @@ import * as tf from "@tensorflow/tfjs";
 import { subjects, students, type Student } from "@/lib/data";
 import { addAttendanceRecord } from "@/lib/attendance-store";
 import { SESSION_KEYS } from "@/lib/anti-proxy";
-import { storeSessionInSupabase, endSessionInSupabase, type SessionRecord } from "@/lib/supabase";
 
 // Model configuration
 const MODEL_URL = "/models/face-detection/model.json";
@@ -132,13 +131,11 @@ export default function FaceAttendancePage() {
   };
 
   // Start session - OTP only
-  const startSession = async () => {
+  const startSession = () => {
     if (!selectedSubject || !selectedPeriod) {
       setError("Please select subject and period first");
       return;
     }
-
-    setIsStoringSession(true);
 
     setSessionActive(true);
     localStorage.setItem(SESSION_KEYS.sessionActive, "true");
@@ -156,34 +153,10 @@ export default function FaceAttendancePage() {
     setOtpTimeLeft(90);
     localStorage.setItem(SESSION_KEYS.otp, newOtp);
     localStorage.setItem(SESSION_KEYS.otpExpiry, otpExpiry.toString());
-
-    // Store session in Supabase for cross-device access
-    const sessionData: SessionRecord = {
-      session_code: newOtp, // Use OTP as session code
-      subject_id: selectedSubject,
-      subject_name: subject?.name || "",
-      period: parseInt(selectedPeriod),
-      otp: newOtp,
-      otp_expiry: otpExpiry,
-      active: true,
-    };
-
-    const result = await storeSessionInSupabase(sessionData);
-    if (!result.success) {
-      setError("Failed to create session: " + result.error);
-      setSessionActive(false);
-    }
-
-    setIsStoringSession(false);
   };
 
   // End session
-  const endSession = async () => {
-    // End session in Supabase using OTP as session code
-    if (otp) {
-      await endSessionInSupabase(otp);
-    }
-
+  const endSession = () => {
     setSessionActive(false);
     setOtp("");
     setOtpTimeLeft(0);

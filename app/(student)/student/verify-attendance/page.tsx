@@ -23,7 +23,6 @@ import {
   isSessionActive,
   SESSION_KEYS,
 } from "@/lib/anti-proxy";
-import { getSessionFromSupabase } from "@/lib/supabase";
 import { type Student, calculateStudentAttendance, ATTENDANCE_THRESHOLD } from "@/lib/data";
 
 interface SessionInfo {
@@ -58,14 +57,14 @@ export default function VerifyAttendancePage() {
     }
 
     // Check for OTP in URL (from teacher's shared code)
-    const checkUrlSession = async () => {
+    const checkUrlSession = () => {
       if (typeof window === "undefined") return;
       const urlParams = new URLSearchParams(window.location.search);
       const otpFromUrl = urlParams.get("code");
 
       if (otpFromUrl) {
         setSessionCodeInput(otpFromUrl);
-        await joinSessionWithCode(otpFromUrl);
+        joinSessionWithCode(otpFromUrl);
       }
     };
 
@@ -91,54 +90,52 @@ export default function VerifyAttendancePage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Join session using OTP (from Supabase)
-  const joinSessionWithCode = async (code: string) => {
+  // Join session using OTP (from localStorage)
+  const joinSessionWithCode = (code: string) => {
     setIsJoining(true);
     setErrorMessage("");
     setSuccessMessage("");
 
-    try {
-      const result = await getSessionFromSupabase(code);
+    // Get session from localStorage (teacher's browser stores it)
+    const storedOtp = localStorage.getItem(SESSION_KEYS.otp);
+    const otpExpiry = localStorage.getItem(SESSION_KEYS.otpExpiry);
+    const subjectId = localStorage.getItem(SESSION_KEYS.subjectId);
+    const subjectName = localStorage.getItem(SESSION_KEYS.subjectName);
+    const period = localStorage.getItem(SESSION_KEYS.period);
 
-      if (result.success && result.session) {
-        const session = result.session;
-
-        // Store session locally
+    if (storedOtp === code && otpExpiry) {
+      const expiryTime = parseInt(otpExpiry);
+      if (Date.now() < expiryTime) {
+        // Valid OTP - join session
         localStorage.setItem(SESSION_KEYS.sessionActive, "true");
-        localStorage.setItem(SESSION_KEYS.subjectId, session.subject_id);
-        localStorage.setItem(SESSION_KEYS.subjectName, session.subject_name);
-        localStorage.setItem(SESSION_KEYS.period, session.period.toString());
-        if (session.otp) {
-          localStorage.setItem(SESSION_KEYS.otp, session.otp);
-        }
-        if (session.otp_expiry) {
-          localStorage.setItem(SESSION_KEYS.otpExpiry, session.otp_expiry.toString());
-        }
+        localStorage.setItem(SESSION_KEYS.subjectId, subjectId || "");
+        localStorage.setItem(SESSION_KEYS.subjectName, subjectName || "");
+        localStorage.setItem(SESSION_KEYS.period, period || "");
 
         setSessionActive(true);
         setSessionInfo({
-          subjectId: session.subject_id,
-          subjectName: session.subject_name,
-          period: session.period,
+          subjectId: subjectId || undefined,
+          subjectName: subjectName || undefined,
+          period: period ? parseInt(period) : undefined,
         });
         setSuccessMessage("Session joined successfully! Complete the OTP verification below.");
       } else {
-        setErrorMessage(result.error || "Session not found. Ask your teacher to start a new session.");
+        setErrorMessage("OTP has expired. Ask your teacher to generate a new one.");
       }
-    } catch (err) {
-      setErrorMessage("Failed to join session. Please try again.");
+    } else {
+      setErrorMessage("Invalid OTP. Please check with your teacher.");
     }
 
     setIsJoining(false);
   };
 
   // Join session button handler
-  const joinSession = async () => {
+  const joinSession = () => {
     if (!sessionCodeInput || sessionCodeInput.length !== 6) {
       setErrorMessage("Please enter a valid 6-digit OTP");
       return;
     }
-    await joinSessionWithCode(sessionCodeInput);
+    joinSessionWithCode(sessionCodeInput);
   };
 
   const verifyOTP = () => {
