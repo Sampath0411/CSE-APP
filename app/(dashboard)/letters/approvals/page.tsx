@@ -73,6 +73,24 @@ export default function LetterApprovalsPage() {
 
   useEffect(() => {
     loadRequests();
+
+    // Listen for storage changes from other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === LETTER_REQUESTS_KEY) {
+        loadRequests();
+      }
+    };
+
+    // Poll for updates every 2 seconds
+    const interval = setInterval(() => {
+      loadRequests();
+    }, 2000);
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
   }, []);
 
   const loadRequests = () => {

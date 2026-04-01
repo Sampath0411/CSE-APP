@@ -82,7 +82,27 @@ export default function StudentLettersPage() {
       setStudent(parsed);
       loadMyRequests(parsed.id);
     }
-  }, []);
+
+    // Listen for storage changes (when admin updates status)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === LETTER_REQUESTS_KEY && student) {
+        loadMyRequests(student.id);
+      }
+    };
+
+    // Poll for updates every 2 seconds
+    const interval = setInterval(() => {
+      if (student) {
+        loadMyRequests(student.id);
+      }
+    }, 2000);
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [student?.id]);
 
   const loadMyRequests = (studentId: string) => {
     const stored = localStorage.getItem(LETTER_REQUESTS_KEY);
