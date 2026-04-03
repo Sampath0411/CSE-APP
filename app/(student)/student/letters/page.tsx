@@ -169,16 +169,16 @@ export default function StudentLettersPage() {
     const letterContent: Record<LetterType, React.ReactElement> = {
       bonafide: (
         <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
-          {/* Watermark - AU Logo (light version) */}
+          {/* Watermark - AU Official Logo */}
           <div
             className="absolute inset-0 flex items-center justify-center pointer-events-none z-0"
-            style={{ opacity: 0.2 }}
+            style={{ opacity: 0.15 }}
           >
             <Image
-              src="/images.jpg"
-              alt="AU Watermark"
-              width={400}
-              height={400}
+              src="/au-watermark.png"
+              alt="Andhra University Official Watermark"
+              width={450}
+              height={450}
               className="object-contain"
               priority
             />
@@ -227,10 +227,19 @@ export default function StudentLettersPage() {
 
       study: (
         <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-8xl font-bold text-gray-200 opacity-20 transform -rotate-45">
-              PREVIEW
-            </div>
+          {/* Watermark - AU Official Logo */}
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-0"
+            style={{ opacity: 0.15 }}
+          >
+            <Image
+              src="/au-watermark.png"
+              alt="Andhra University Official Watermark"
+              width={450}
+              height={450}
+              className="object-contain"
+              priority
+            />
           </div>
 
           <div className="header text-center mb-8 relative z-10">
@@ -282,10 +291,19 @@ export default function StudentLettersPage() {
 
       loan: (
         <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-8xl font-bold text-gray-200 opacity-20 transform -rotate-45">
-              PREVIEW
-            </div>
+          {/* Watermark - AU Official Logo */}
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-0"
+            style={{ opacity: 0.15 }}
+          >
+            <Image
+              src="/au-watermark.png"
+              alt="Andhra University Official Watermark"
+              width={450}
+              height={450}
+              className="object-contain"
+              priority
+            />
           </div>
 
           <div className="header text-center mb-8 relative z-10">
@@ -345,10 +363,19 @@ export default function StudentLettersPage() {
 
       internship: (
         <div ref={letterRef} className="bg-white text-black p-8 font-serif relative">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-8xl font-bold text-gray-200 opacity-20 transform -rotate-45">
-              PREVIEW
-            </div>
+          {/* Watermark - AU Official Logo */}
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-0"
+            style={{ opacity: 0.15 }}
+          >
+            <Image
+              src="/au-watermark.png"
+              alt="Andhra University Official Watermark"
+              width={450}
+              height={450}
+              className="object-contain"
+              priority
+            />
           </div>
 
           <div className="header text-center mb-8 relative z-10">

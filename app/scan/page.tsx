@@ -10,7 +10,7 @@ export default function ScanRedirectPage() {
     // Check if student is logged in
     const storedStudent = sessionStorage.getItem("studentUser");
     if (storedStudent) {
-      router.push("/student/scan");
+      router.push("/student");
     } else {
       router.push("/login");
     }

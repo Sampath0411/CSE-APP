@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { BookOpen, Calendar, Award, Clock, CheckCircle2, AlertCircle, Upload, FileText, UserCheck } from "lucide-react";
-import { assignments, subjects, type Assignment, type Student } from "@/lib/data";
+import { BookOpen, Calendar, Award, Clock, CheckCircle2, AlertCircle, Upload, FileText, UserCheck, RefreshCw } from "lucide-react";
+import { assignments as defaultAssignments, subjects, type Assignment, type Student } from "@/lib/data";
 import {
   getSubmissions,
   saveSubmissions,
@@ -15,9 +15,10 @@ import {
   getStudentSubmission,
   type AssignmentSubmission
 } from "@/lib/assignment-submissions-store";
+import { getAllAssignments, updateAssignmentStatus } from "@/lib/assignments-store";
 
 export default function StudentAssignmentsPage() {
-  const [assignmentList] = useState<Assignment[]>(assignments);
+  const [assignmentList, setAssignmentList] = useState<Assignment[]>([]);
   const [student, setStudent] = useState<Student | null>(null);
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -33,6 +34,19 @@ export default function StudentAssignmentsPage() {
 
     // Load submissions from store
     setSubmissions(getSubmissions());
+
+    // Load assignments from shared store (same as faculty portal)
+    const loadedAssignments = getAllAssignments(defaultAssignments);
+    setAssignmentList(loadedAssignments);
+  }, []);
+
+  // Auto-check for overdue assignments every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAssignmentList(prev => updateAssignmentStatus(prev));
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const refreshSubmissions = () => {
@@ -103,21 +117,32 @@ export default function StudentAssignmentsPage() {
     setShowSubmitDialog(true);
   };
 
+  const refreshAssignments = () => {
+    const loadedAssignments = getAllAssignments(defaultAssignments);
+    setAssignmentList(loadedAssignments);
+  };
+
   const activeAssignments = assignmentList.filter(a => a.status === "active");
   const closedAssignments = assignmentList.filter(a => a.status === "closed");
 
   return (
     <div className="space-y-6 p-4 lg:p-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <BookOpen className="h-6 w-6 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <BookOpen className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">My Assignments</h1>
+            <p className="text-muted-foreground">
+              View and track your assignments
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">My Assignments</h1>
-          <p className="text-muted-foreground">
-            View and track your assignments
-          </p>
-        </div>
+        <Button variant="outline" size="sm" onClick={refreshAssignments}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
       </div>
 
       {/* Active Assignments */}

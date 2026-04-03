@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,9 +21,9 @@ import * as tf from "@tensorflow/tfjs";
 import { subjects, students, type Student } from "@/lib/data";
 import { addAttendanceRecord } from "@/lib/attendance-store";
 
-// Model configuration
-const MODEL_URL = "/models/face-detection/model.json";
-const MODEL_METADATA_URL = "/models/face-detection/metadata.json";
+// Model configuration - using Teachable Machine model
+const MODEL_URL = "/face-model/model.json";
+const MODEL_METADATA_URL = "/face-model/metadata.json";
 const CONFIDENCE_THRESHOLD = 0.85;
 
 type DetectionStatus = "idle" | "loading" | "ready" | "scanning" | "success" | "error";
@@ -61,7 +60,7 @@ export default function FaceAttendancePage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load model and metadata
   const loadModel = useCallback(async () => {
@@ -130,9 +129,10 @@ export default function FaceAttendancePage() {
     return tensor;
   };
 
-  // Make prediction
+  // Make prediction using the model
   const predict = async (): Promise<{ label: string; confidence: number } | null> => {
     if (!model || !videoRef.current || !metadata) return null;
+
     try {
       const tensor = processImage(videoRef.current);
       const predictions = model.predict(tensor) as tf.Tensor;
@@ -164,10 +164,13 @@ export default function FaceAttendancePage() {
         const result = await predict();
         if (result) {
           setPrediction(`${result.label}: ${Math.round(result.confidence * 100)}%`);
+
           if (result.confidence >= CONFIDENCE_THRESHOLD) {
             if (intervalRef.current) clearInterval(intervalRef.current);
 
+            // Match by exact name or partial match
             const matchedStudent = students.find((s) =>
+              s.name.toLowerCase() === result.label.toLowerCase() ||
               s.name.toLowerCase().includes(result.label.toLowerCase())
             );
 
@@ -178,8 +181,6 @@ export default function FaceAttendancePage() {
             });
 
             if (matchedStudent) {
-              // Anti-proxy validation is handled when student actually confirms
-              // For now, just show success
               const today = new Date().toISOString().split("T")[0];
               addAttendanceRecord({
                 studentId: matchedStudent.id,

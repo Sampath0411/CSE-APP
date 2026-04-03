@@ -3,6 +3,7 @@ import { Ramabhadra, Arimo, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Preloader } from '@/components/preloader'
+import { Chatbot } from '@/components/chatbot'
 import './globals.css'
 
 const _ramabhadra = Ramabhadra({ 
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
   title: 'CSSE Super Student App | Andhra University',
   description: 'A 360-degree tool for teachers and administrators to manage attendance, track compliance, and generate official student documentation.',
   generator: 'v0.app',
+  manifest: '/manifest.json',
   icons: {
     icon: [
       {
@@ -57,6 +59,7 @@ export default function RootLayout({
             {children}
           </Preloader>
         </ThemeProvider>
+        <Chatbot />
         <Analytics />
       </body>
     </html>

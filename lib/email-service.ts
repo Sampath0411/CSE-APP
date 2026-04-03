@@ -1,7 +1,7 @@
 // Email Service for Attendance Alerts
 // In production, use SendGrid, AWS SES, or Nodemailer with SMTP
 
-import { students, type Student, calculateStudentAttendance } from "./data";
+import { students, subjects, type Student, calculateStudentAttendance } from "./data";
 
 // Store sent alerts to prevent spam
 const sentAlerts = new Map<string, Date>();
@@ -75,20 +75,22 @@ Andhra University
     console.log(emailContent.body);
     console.log("=".repeat(60));
 
-    // Store alert log
-    const alertLog: EmailAlert = {
-      studentId: student.id,
-      studentEmail: student.email,
-      studentName: student.name,
-      attendancePercentage,
-      subject: subjectName,
-      sentAt: new Date().toISOString(),
-    };
+    // Store alert log - only in browser environment
+    if (typeof window !== "undefined") {
+      const alertLog: EmailAlert = {
+        studentId: student.id,
+        studentEmail: student.email,
+        studentName: student.name,
+        attendancePercentage,
+        subject: subjectName,
+        sentAt: new Date().toISOString(),
+      };
 
-    // Store in localStorage for persistence
-    const existingLogs = JSON.parse(localStorage.getItem("emailAlerts") || "[]");
-    existingLogs.push(alertLog);
-    localStorage.setItem("emailAlerts", JSON.stringify(existingLogs));
+      // Store in localStorage for persistence
+      const existingLogs = JSON.parse(localStorage.getItem("emailAlerts") || "[]");
+      existingLogs.push(alertLog);
+      localStorage.setItem("emailAlerts", JSON.stringify(existingLogs));
+    }
 
     // Mark as sent
     sentAlerts.set(alertKey, new Date());
@@ -113,7 +115,7 @@ export function checkAndSendAttendanceAlert(
 
   if (attendance.percentage < THRESHOLD) {
     const subjectName = subjectId
-      ? require("./data").subjects.find((s: any) => s.id === subjectId)?.name
+      ? subjects.find((s) => s.id === subjectId)?.name
       : undefined;
 
     sendAttendanceAlert(student, attendance.percentage, subjectName);

@@ -15,7 +15,8 @@ import {
   LogIn,
   AlertCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from "lucide-react";
 import { validateTeacherLogin, validateStudentLogin } from "@/lib/data";
 
@@ -205,7 +206,7 @@ export default function LoginPage() {
                 >
                   {studentLoading ? (
                     <>
-                      <span className="animate-spin mr-2">&#9696;</span>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Signing in...
                     </>
                   ) : (
@@ -279,7 +280,7 @@ export default function LoginPage() {
                 >
                   {facultyLoading ? (
                     <>
-                      <span className="animate-spin mr-2">&#9696;</span>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Signing in...
                     </>
                   ) : (
@@ -352,7 +353,7 @@ export default function LoginPage() {
                 >
                   {hodLoading ? (
                     <>
-                      <span className="animate-spin mr-2">&#9696;</span>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Signing in...
                     </>
                   ) : (

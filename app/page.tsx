@@ -14,6 +14,7 @@ import {
   ScanFace,
   LogIn,
   UserCog,
+  Shield,
 } from "lucide-react";
 
 const highlights = [
@@ -53,17 +54,9 @@ export default function HomePage() {
               CSSE Super Student App
             </h1>
             <p className="text-lg text-muted-foreground mb-8 text-pretty">
-              A 360-degree tool for teachers and administrators to manage attendance, track compliance with campus rules, 
+              A 360-degree tool for teachers and administrators to manage attendance, track compliance with campus rules,
               and instantly generate official student documentation.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              <Button asChild size="lg">
-                <Link href="/login">
-                  <LogIn className="h-5 w-5 mr-2" />
-                  Sign In
-                </Link>
-              </Button>
-            </div>
           </div>
         </div>
       </section>
@@ -79,7 +72,7 @@ export default function HomePage() {
           </div>
           
           {/* Portal Cards */}
-          <div className="max-w-3xl mx-auto grid md:grid-cols-2 gap-6 mb-12">
+          <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6 mb-12">
             {/* Student Portal Card */}
             <Card className="relative overflow-hidden hover:shadow-lg transition-shadow">
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16" />
@@ -120,16 +113,16 @@ export default function HomePage() {
               </CardContent>
             </Card>
 
-            {/* Admin Portal Card */}
+            {/* Faculty Portal Card */}
             <Card className="relative overflow-hidden hover:shadow-lg transition-shadow">
               <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -mr-16 -mt-16" />
               <CardHeader className="pb-2">
                 <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center mb-4">
                   <UserCog className="h-7 w-7 text-accent" />
                 </div>
-                <CardTitle className="text-xl">Admin / Faculty Portal</CardTitle>
+                <CardTitle className="text-xl">Faculty Portal</CardTitle>
                 <CardDescription>
-                  Manage attendance, view analytics, use face recognition, and create official documents.
+                  Mark attendance, manage assignments, view timetables and create student letters.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -150,12 +143,52 @@ export default function HomePage() {
                 <Button asChild variant="secondary" className="w-full">
                   <Link href="/login">
                     <UserCog className="h-4 w-4 mr-2" />
-                    Admin Login
+                    Faculty Login
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Link>
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   Login with University Email
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* HOD Portal Card */}
+            <Card className="relative overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-warning/10 rounded-full -mr-16 -mt-16" />
+              <CardHeader className="pb-2">
+                <div className="w-14 h-14 rounded-xl bg-warning/10 flex items-center justify-center mb-4">
+                  <Shield className="h-7 w-7 text-warning" />
+                </div>
+                <CardTitle className="text-xl">HOD Portal</CardTitle>
+                <CardDescription>
+                  Oversee department operations, manage timetables, approve letters and view reports.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-success" />
+                    Manage timetables
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-success" />
+                    Approve student letters
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-success" />
+                    Send attendance alerts
+                  </li>
+                </ul>
+                <Button asChild variant="outline" className="w-full border-warning text-warning hover:bg-warning hover:text-warning-foreground">
+                  <Link href="/login">
+                    <Shield className="h-4 w-4 mr-2" />
+                    HOD Login
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Link>
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Login with HOD Email
                 </p>
               </CardContent>
             </Card>
@@ -252,7 +285,7 @@ export default function HomePage() {
               <CardDescription>Use these credentials to explore the application</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <p className="font-semibold text-sm flex items-center gap-2">
                     <GraduationCap className="h-4 w-4 text-primary" />
@@ -260,17 +293,27 @@ export default function HomePage() {
                   </p>
                   <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
                     <p><span className="text-muted-foreground">Roll:</span> <code className="bg-background px-1.5 py-0.5 rounded">22211</code></p>
-                    <p><span className="text-muted-foreground">Or Regd:</span> <code className="bg-background px-1.5 py-0.5 rounded">3235064022211</code></p>
+                    <p><span className="text-muted-foreground">Pass:</span> <code className="bg-background px-1.5 py-0.5 rounded">Student123</code></p>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <p className="font-semibold text-sm flex items-center gap-2">
                     <UserCog className="h-4 w-4 text-accent" />
-                    Admin Login
+                    Faculty Login
                   </p>
                   <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
                     <p><span className="text-muted-foreground">Email:</span> <code className="bg-background px-1.5 py-0.5 rounded text-xs">aneela@andhrauniversity.edu.in</code></p>
-                    <p><span className="text-muted-foreground">Password:</span> <code className="bg-background px-1.5 py-0.5 rounded">admin123</code></p>
+                    <p><span className="text-muted-foreground">Pass:</span> <code className="bg-background px-1.5 py-0.5 rounded">admin123</code></p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-semibold text-sm flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-warning" />
+                    HOD Login
+                  </p>
+                  <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
+                    <p><span className="text-muted-foreground">Email:</span> <code className="bg-background px-1.5 py-0.5 rounded text-xs">hod@andhrauniversity.edu.in</code></p>
+                    <p><span className="text-muted-foreground">Pass:</span> <code className="bg-background px-1.5 py-0.5 rounded">hod123</code></p>
                   </div>
                 </div>
               </div>
