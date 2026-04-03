@@ -17,6 +17,7 @@ import {
   BookOpen,
   CheckCircle2,
   BarChart3,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -60,6 +61,12 @@ const navItems = [
     href: "/faculty/attendance-reports",
     icon: BarChart3,
     description: "View Reports",
+  },
+  {
+    title: "Attendance Log",
+    href: "/faculty/attendance-log",
+    icon: ClipboardList,
+    description: "View & Edit Records",
   },
 ];
 
