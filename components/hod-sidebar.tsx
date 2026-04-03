@@ -13,6 +13,7 @@ import {
   Home,
   Calendar,
   Bell,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -32,6 +33,12 @@ const navItems = [
     href: "/hod/timetable",
     icon: Calendar,
     description: "Class Schedule",
+  },
+  {
+    title: "Attendance Reports",
+    href: "/hod/attendance-reports",
+    icon: BarChart3,
+    description: "Multi-Dimensional Reports",
   },
   {
     title: "Letters",

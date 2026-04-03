@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Preloader } from '@/components/preloader'
 import { Chatbot } from '@/components/chatbot'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 const _ramabhadra = Ramabhadra({ 
@@ -60,6 +61,7 @@ export default function RootLayout({
           </Preloader>
         </ThemeProvider>
         <Chatbot />
+        <Toaster />
         <Analytics />
       </body>
     </html>
