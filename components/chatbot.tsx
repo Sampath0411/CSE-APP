@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, User } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Message {
   role: "user" | "assistant";
@@ -80,6 +81,18 @@ export function Chatbot() {
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
+    // Check if API key is configured
+    if (!GROQ_API_KEY) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Sorry, the AI assistant is not configured. Please contact the administrator to set up the API key.",
+        },
+      ]);
+      return;
+    }
+
     const userMessage = input.trim();
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
@@ -105,7 +118,9 @@ export function Chatbot() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to get response");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Groq API error:", errorData);
+        throw new Error(errorData.error?.message || "Failed to get response");
       }
 
       const data = await response.json();
@@ -113,11 +128,12 @@ export function Chatbot() {
 
       setMessages((prev) => [...prev, { role: "assistant", content: assistantMessage }]);
     } catch (error) {
+      console.error("Chatbot error:", error);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "I'm having trouble connecting. Please try again in a moment.",
+          content: "Sorry, I'm having trouble connecting to the AI service. This might be due to: (1) API key not set in Vercel environment variables, (2) Network issue, or (3) API rate limit. Please contact support if the problem persists.",
         },
       ]);
     } finally {
@@ -155,6 +171,16 @@ export function Chatbot() {
             <Bot className="h-5 w-5" />
             <span className="text-sm font-semibold">CSSE Assistant</span>
           </div>
+
+          {/* API Key Warning */}
+          {!GROQ_API_KEY && (
+            <Alert variant="destructive" className="m-3 text-xs">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                API key not configured. Please set NEXT_PUBLIC_GROQ_API_KEY in Vercel environment variables.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
